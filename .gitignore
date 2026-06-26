@@ -1,0 +1,11 @@
+# Ignore data by default
+data/raw/**
+data/processed/**
+data/labeled/**
+data/splits/**
+
+# Keep selected CSV files
+!data/labeled/manual_review_taxonomy_final.csv
+!data/splits/train.csv
+!data/splits/validation.csv
+!data/splits/test.csv
