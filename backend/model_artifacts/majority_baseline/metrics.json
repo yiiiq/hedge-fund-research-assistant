@@ -1,0 +1,167 @@
+{
+  "test": {
+    "accuracy": 0.2582781456953642,
+    "macro_f1": 0.05131578947368421,
+    "per_class": {
+      "AI / Product Strategy": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 36
+      },
+      "Capital Allocation / CAPEX": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 64
+      },
+      "Competition": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 18
+      },
+      "Demand Growth": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 14
+      },
+      "Macro Risk": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 37
+      },
+      "Margins / Profitability": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 27
+      },
+      "Neutral / Other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 28
+      },
+      "Regulation / Legal": {
+        "f1": 0.4105263157894737,
+        "precision": 0.2582781456953642,
+        "recall": 1.0,
+        "support": 78
+      }
+    },
+    "weighted_f1": 0.1060299756012548
+  },
+  "train": {
+    "accuracy": 0.2594171997157072,
+    "macro_f1": 0.05149548532731378,
+    "per_class": {
+      "AI / Product Strategy": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 165
+      },
+      "Capital Allocation / CAPEX": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 296
+      },
+      "Competition": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 85
+      },
+      "Demand Growth": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 68
+      },
+      "Macro Risk": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 173
+      },
+      "Margins / Profitability": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 126
+      },
+      "Neutral / Other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 129
+      },
+      "Regulation / Legal": {
+        "f1": 0.41196388261851025,
+        "precision": 0.2594171997157072,
+        "recall": 1.0,
+        "support": 365
+      }
+    },
+    "weighted_f1": 0.10687051681290423
+  },
+  "validation": {
+    "accuracy": 0.2591362126245847,
+    "macro_f1": 0.051451187335092345,
+    "per_class": {
+      "AI / Product Strategy": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 35
+      },
+      "Capital Allocation / CAPEX": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 63
+      },
+      "Competition": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 19
+      },
+      "Demand Growth": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 15
+      },
+      "Macro Risk": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 37
+      },
+      "Margins / Profitability": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 27
+      },
+      "Neutral / Other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 27
+      },
+      "Regulation / Legal": {
+        "f1": 0.41160949868073876,
+        "precision": 0.2591362126245847,
+        "recall": 1.0,
+        "support": 78
+      }
+    },
+    "weighted_f1": 0.10666292656843065
+  }
+}

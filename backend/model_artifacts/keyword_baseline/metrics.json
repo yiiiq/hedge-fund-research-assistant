@@ -1,0 +1,167 @@
+{
+  "test": {
+    "accuracy": 0.6556291390728477,
+    "macro_f1": 0.5794173049164102,
+    "per_class": {
+      "AI / Product Strategy": {
+        "f1": 0.8064516129032258,
+        "precision": 0.9615384615384616,
+        "recall": 0.6944444444444444,
+        "support": 36
+      },
+      "Capital Allocation / CAPEX": {
+        "f1": 0.6896551724137931,
+        "precision": 0.7692307692307693,
+        "recall": 0.625,
+        "support": 64
+      },
+      "Competition": {
+        "f1": 0.619047619047619,
+        "precision": 0.5416666666666666,
+        "recall": 0.7222222222222222,
+        "support": 18
+      },
+      "Demand Growth": {
+        "f1": 0.3703703703703704,
+        "precision": 0.38461538461538464,
+        "recall": 0.35714285714285715,
+        "support": 14
+      },
+      "Macro Risk": {
+        "f1": 0.7536231884057971,
+        "precision": 0.8125,
+        "recall": 0.7027027027027027,
+        "support": 37
+      },
+      "Margins / Profitability": {
+        "f1": 0.72,
+        "precision": 0.782608695652174,
+        "recall": 0.6666666666666666,
+        "support": 27
+      },
+      "Neutral / Other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 28
+      },
+      "Regulation / Legal": {
+        "f1": 0.6761904761904761,
+        "precision": 0.5378787878787878,
+        "recall": 0.9102564102564102,
+        "support": 78
+      }
+    },
+    "weighted_f1": 0.6276991607314995
+  },
+  "train": {
+    "accuracy": 0.67590618336887,
+    "macro_f1": 0.608391330917787,
+    "per_class": {
+      "AI / Product Strategy": {
+        "f1": 0.7252747252747253,
+        "precision": 0.9166666666666666,
+        "recall": 0.6,
+        "support": 165
+      },
+      "Capital Allocation / CAPEX": {
+        "f1": 0.7526501766784452,
+        "precision": 0.7888888888888889,
+        "recall": 0.7195945945945946,
+        "support": 296
+      },
+      "Competition": {
+        "f1": 0.689655172413793,
+        "precision": 0.5932203389830508,
+        "recall": 0.8235294117647058,
+        "support": 85
+      },
+      "Demand Growth": {
+        "f1": 0.6478873239436619,
+        "precision": 0.6216216216216216,
+        "recall": 0.6764705882352942,
+        "support": 68
+      },
+      "Macro Risk": {
+        "f1": 0.6447368421052633,
+        "precision": 0.7480916030534351,
+        "recall": 0.5664739884393064,
+        "support": 173
+      },
+      "Margins / Profitability": {
+        "f1": 0.6926406926406926,
+        "precision": 0.7619047619047619,
+        "recall": 0.6349206349206349,
+        "support": 126
+      },
+      "Neutral / Other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 129
+      },
+      "Regulation / Legal": {
+        "f1": 0.7142857142857142,
+        "precision": 0.5740432612312812,
+        "recall": 0.9452054794520548,
+        "support": 365
+      }
+    },
+    "weighted_f1": 0.6429696491270179
+  },
+  "validation": {
+    "accuracy": 0.6445182724252492,
+    "macro_f1": 0.5774779773025386,
+    "per_class": {
+      "AI / Product Strategy": {
+        "f1": 0.7457627118644068,
+        "precision": 0.9166666666666666,
+        "recall": 0.6285714285714286,
+        "support": 35
+      },
+      "Capital Allocation / CAPEX": {
+        "f1": 0.6902654867256637,
+        "precision": 0.78,
+        "recall": 0.6190476190476191,
+        "support": 63
+      },
+      "Competition": {
+        "f1": 0.5853658536585366,
+        "precision": 0.5454545454545454,
+        "recall": 0.631578947368421,
+        "support": 19
+      },
+      "Demand Growth": {
+        "f1": 0.5925925925925926,
+        "precision": 0.6666666666666666,
+        "recall": 0.5333333333333333,
+        "support": 15
+      },
+      "Macro Risk": {
+        "f1": 0.6571428571428571,
+        "precision": 0.696969696969697,
+        "recall": 0.6216216216216216,
+        "support": 37
+      },
+      "Margins / Profitability": {
+        "f1": 0.6666666666666666,
+        "precision": 0.7619047619047619,
+        "recall": 0.5925925925925926,
+        "support": 27
+      },
+      "Neutral / Other": {
+        "f1": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "support": 27
+      },
+      "Regulation / Legal": {
+        "f1": 0.6820276497695853,
+        "precision": 0.5323741007194245,
+        "recall": 0.9487179487179487,
+        "support": 78
+      }
+    },
+    "weighted_f1": 0.6149890467896528
+  }
+}

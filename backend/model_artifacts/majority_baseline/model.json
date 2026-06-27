@@ -1,0 +1,15 @@
+{
+  "label_counts": {
+    "AI / Product Strategy": 165,
+    "Capital Allocation / CAPEX": 296,
+    "Competition": 85,
+    "Demand Growth": 68,
+    "Macro Risk": 173,
+    "Margins / Profitability": 126,
+    "Neutral / Other": 129,
+    "Regulation / Legal": 365
+  },
+  "majority_count": 365,
+  "majority_label": "Regulation / Legal",
+  "model_type": "majority_baseline"
+}
