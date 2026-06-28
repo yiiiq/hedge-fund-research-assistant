@@ -20,3 +20,21 @@ The final application provides a public, interactive analyst dashboard where use
 - `experiments/`: Experiment configuration and results
 - `report/`: Final report, figures, and pitch slides
 - `deployment/`: Container and deployment files
+
+## Baseline Training
+
+Install dependencies into the local environment:
+
+```bash
+.conda/bin/pip install -r requirements.txt
+```
+
+Run the baselines:
+
+```bash
+.conda/bin/python -m src.models.majority_baseline
+.conda/bin/python -m src.models.keyword_baseline
+.conda/bin/python -m src.models.tfidf_logreg
+```
+
+Artifacts are written under `backend/model_artifacts/`.

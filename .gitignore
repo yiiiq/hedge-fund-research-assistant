@@ -9,3 +9,10 @@ data/splits/**
 !data/splits/train.csv
 !data/splits/validation.csv
 !data/splits/test.csv
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Generated model binaries
+backend/model_artifacts/**/*.joblib
