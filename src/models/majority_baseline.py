@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
+from src.evaluation.reports import write_evaluation_artifacts
 from src.models.data import labels, load_splits, project_root
 from src.models.io import write_json
-from src.models.metrics import classification_metrics
 
 
 def train_majority_baseline(train_rows: list[dict[str, str]]) -> dict:
@@ -28,14 +28,11 @@ def predict(model: dict, rows: list[dict[str, str]]) -> list[str]:
 def run(output_dir: Path | None = None) -> dict:
     splits = load_splits()
     model = train_majority_baseline(splits["train"])
-    metrics = {
-        split: classification_metrics(labels(rows), predict(model, rows))
-        for split, rows in splits.items()
-    }
-    payload = {"model": model, "metrics": metrics}
+    split_predictions = {split: predict(model, rows) for split, rows in splits.items()}
     output_dir = output_dir or project_root() / "backend" / "model_artifacts" / "majority_baseline"
+    metrics = write_evaluation_artifacts(output_dir, splits, split_predictions)
+    payload = {"model": model, "metrics": metrics}
     write_json(output_dir / "model.json", model)
-    write_json(output_dir / "metrics.json", metrics)
     return payload
 
 
@@ -48,4 +45,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -37,4 +37,23 @@ Run the baselines:
 .conda/bin/python -m src.models.tfidf_logreg
 ```
 
+Tune TF-IDF logistic regression hyperparameters:
+
+```bash
+.conda/bin/python -m src.models.tune_tfidf_logreg
+```
+
+Fine-tune FinBERT/BERT:
+
+```bash
+.conda/bin/pip install -r requirements.txt
+.conda/bin/python -m src.models.bert_classifier
+```
+
+For a quick smoke test before a full run:
+
+```bash
+.conda/bin/python -m src.models.bert_classifier --limit-rows 16 --epochs 1
+```
+
 Artifacts are written under `backend/model_artifacts/`.

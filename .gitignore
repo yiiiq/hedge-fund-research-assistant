@@ -15,4 +15,4 @@ __pycache__/
 *.py[cod]
 
 # Generated model binaries
-backend/model_artifacts/**/*.joblib
+backend/model_artifacts/
