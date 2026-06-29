@@ -7,14 +7,25 @@ import html
 import io
 import re
 import tempfile
+import warnings
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import joblib
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+from bs4 import XMLParsedAsHTMLWarning
 from PIL import Image
+from src.labeling.sec_exploration import (
+    DEFAULT_HEADERS,
+    download_filing,
+    filing_url,
+    html_to_text,
+    load_ticker_cik_map,
+    recent_filings_for_ticker,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -26,8 +37,10 @@ MIN_CHUNK_CHARS = 350
 MAX_CHUNK_CHARS = 1800
 PDF_RENDER_ZOOM = 1.5
 LOW_CONFIDENCE_THRESHOLD = 0.45
+SEC_TARGET_FORMS = ["10-K", "10-Q", "8-K"]
+MAX_SEC_FILINGS = 12
 
-LABELS = [
+DEFAULT_LABELS = [
     "Regulation / Legal",
     "Capital Allocation / CAPEX",
     "Macro Risk",
@@ -38,7 +51,7 @@ LABELS = [
     "Neutral / Other",
 ]
 
-LABEL_COLORS = {
+DEFAULT_LABEL_COLORS = {
     "Regulation / Legal": "#0b60e7",
     "Capital Allocation / CAPEX": "#19c4b4",
     "Macro Risk": "#dc2626",
@@ -49,6 +62,21 @@ LABEL_COLORS = {
     "Neutral / Other": "#64748b",
 }
 
+FALLBACK_TOPIC_COLORS = [
+    "#0b60e7",
+    "#19c4b4",
+    "#dc2626",
+    "#5a6cf4",
+    "#16a34a",
+    "#f97316",
+    "#7c3aed",
+    "#64748b",
+    "#db2777",
+    "#0891b2",
+]
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
 
 @st.cache_resource(show_spinner=False)
 def load_model() -> Any:
@@ -58,6 +86,21 @@ def load_model() -> Any:
             f"Model artifact not found at {MODEL_PATH}. Run python3 -m src.models.tfidf_logreg first."
         )
     return joblib.load(MODEL_PATH)
+
+
+def model_labels() -> list[str]:
+    """Return labels from the trained artifact, falling back to the project taxonomy."""
+    labels = list(getattr(load_model(), "classes_", []))
+    return labels or DEFAULT_LABELS
+
+
+def label_color(label: str) -> str:
+    """Assign stable display colors to model labels."""
+    if label in DEFAULT_LABEL_COLORS:
+        return DEFAULT_LABEL_COLORS[label]
+    labels = model_labels()
+    index = labels.index(label) if label in labels else 0
+    return FALLBACK_TOPIC_COLORS[index % len(FALLBACK_TOPIC_COLORS)]
 
 
 def clean_text(text: str) -> str:
@@ -136,6 +179,47 @@ def chunk_pdf_blocks(blocks: list[dict[str, Any]]) -> tuple[list[dict[str, Any]]
     return chunks, messages
 
 
+def chunk_plain_text(text: str) -> tuple[list[dict[str, Any]], list[str]]:
+    """Group visible SEC HTML text into model-sized chunks."""
+    chunks = []
+    messages = []
+    paragraphs = [paragraph.strip() for paragraph in re.split(r"\n\s*\n+", clean_text(text)) if paragraph.strip()]
+    current_parts = []
+    current_text = ""
+
+    for paragraph in paragraphs:
+        candidate = f"{current_text}\n\n{paragraph}".strip()
+        if len(candidate) <= MAX_CHUNK_CHARS:
+            current_parts.append(paragraph)
+            current_text = candidate
+            if len(current_text) >= MIN_CHUNK_CHARS:
+                chunks.append({"text": current_text})
+                current_parts = []
+                current_text = ""
+            continue
+
+        if current_text:
+            chunks.append({"text": current_text})
+        if len(paragraph) > MAX_CHUNK_CHARS:
+            for start in range(0, len(paragraph), MAX_CHUNK_CHARS):
+                part = paragraph[start : start + MAX_CHUNK_CHARS].strip()
+                if len(part) >= MIN_CHUNK_CHARS:
+                    chunks.append({"text": part})
+            current_parts = []
+            current_text = ""
+        else:
+            current_parts = [paragraph]
+            current_text = paragraph
+
+    if current_text:
+        chunks.append({"text": current_text})
+
+    if len(chunks) > MAX_CHUNKS:
+        messages.append(f"Document produced {len(chunks)} chunks; showing the first {MAX_CHUNKS} for demo speed.")
+        chunks = chunks[:MAX_CHUNKS]
+    return chunks, messages
+
+
 def predict_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Classify chunks and attach confidence scores when available."""
     model = load_model()
@@ -153,12 +237,82 @@ def predict_chunks(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             {
                 "index": index + 1,
                 "text": chunk["text"],
-                "blocks": chunk["blocks"],
+                "blocks": chunk.get("blocks", []),
                 "label": label,
                 "confidence": confidence,
             }
         )
     return predictions
+
+
+@st.cache_data(ttl=24 * 60 * 60, show_spinner=False)
+def cached_ticker_cik_map() -> pd.DataFrame:
+    """Load SEC ticker metadata once per day."""
+    return load_ticker_cik_map(headers=DEFAULT_HEADERS)
+
+
+@st.cache_data(ttl=15 * 60, show_spinner=False)
+def cached_recent_filings(ticker: str) -> list[dict[str, Any]]:
+    """Fetch recent target SEC filings for a ticker."""
+    ticker = ticker.strip().upper()
+    ticker_map = cached_ticker_cik_map()
+    if ticker not in set(ticker_map["ticker"]):
+        raise ValueError(f"Ticker {ticker} was not found in the SEC ticker map.")
+
+    filings = recent_filings_for_ticker(ticker, ticker_map, headers=DEFAULT_HEADERS)
+    filings = filings[filings["form"].isin(SEC_TARGET_FORMS)].copy()
+    if filings.empty:
+        raise ValueError(f"No recent {', '.join(SEC_TARGET_FORMS)} filings were found for {ticker}.")
+
+    filings = filings.head(MAX_SEC_FILINGS)
+    records = []
+    for _, row in filings.iterrows():
+        records.append(
+            {
+                "ticker": ticker,
+                "company": ticker_map.loc[ticker_map["ticker"] == ticker, "title"].iloc[0],
+                "cik": row["cik"],
+                "form": row["form"],
+                "filingDate": row["filingDate"],
+                "reportDate": row.get("reportDate", ""),
+                "accessionNumber": row["accessionNumber"],
+                "primaryDocument": row["primaryDocument"],
+            }
+        )
+    return records
+
+
+def format_filing_option(filing: dict[str, Any]) -> str:
+    """Format a filing row for Streamlit selection."""
+    period = filing.get("reportDate") or "n/a"
+    return f"{filing['form']} | filed {filing['filingDate']} | period {period}"
+
+
+def reset_topic_filters(prefix: str) -> None:
+    """Reset all topic filters for a workflow."""
+    for label in model_labels():
+        st.session_state[f"{prefix}_topic_filter_{label}"] = True
+
+
+def analyze_sec_filing(filing: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]], list[str]]:
+    """Download an SEC filing, extract visible text, and classify text chunks."""
+    row = pd.Series(filing)
+    raw_dir = Path(tempfile.gettempdir()) / "section_finder_sec"
+    local_path = download_filing(row, raw_dir=raw_dir, headers=DEFAULT_HEADERS, sleep_seconds=0)
+    text = html_to_text(local_path)
+    if len(text) < 100:
+        raise ValueError("The selected SEC filing text is too short to classify.")
+
+    chunks, messages = chunk_plain_text(text)
+    if not chunks:
+        raise ValueError("No classifiable text chunks were found in the selected filing.")
+
+    metadata = {
+        **filing,
+        "source_url": filing_url(row),
+        "local_path": str(local_path),
+    }
+    return metadata, predict_chunks(chunks), messages
 
 
 def image_to_data_uri(image: Image.Image) -> str:
@@ -221,6 +375,94 @@ def overlay_opacity(confidence: float | None) -> float:
     return 0.30
 
 
+def render_sec_review_component(
+    metadata: dict[str, Any],
+    predictions: list[dict[str, Any]],
+    active_labels: list[str],
+) -> str:
+    """Render classified SEC filing text with clickable highlighted passages."""
+    active = set(active_labels)
+    visible_predictions = [prediction for prediction in predictions if prediction["label"] in active]
+    if not visible_predictions:
+        return "<div class='empty-state'>No SEC passages match the selected topic filters.</div>"
+
+    detail_cards = []
+    passage_cards = []
+    for prediction in visible_predictions:
+        color = label_color(prediction["label"])
+        confidence = prediction["confidence"]
+        confidence_text = "n/a" if confidence is None else f"{confidence:.0%}"
+        detail_cards.append(
+            f"""
+            <article class="detail-card" id="sec-detail-{prediction["index"]}">
+                <div class="detail-topic" style="background:{color};">{html.escape(prediction["label"])}</div>
+                <dl class="detail-metadata">
+                    <div><dt>Confidence</dt><dd>{confidence_text}</dd></div>
+                    <div><dt>Chunk</dt><dd>{prediction["index"]}</dd></div>
+                </dl>
+                <h3>Extracted passage</h3>
+                <p>{html.escape(prediction["text"])}</p>
+            </article>
+            """
+        )
+        passage_cards.append(
+            f"""
+            <button
+                type="button"
+                class="sec-passage"
+                style="--topic-color:{color}; --topic-alpha:{overlay_opacity(confidence):.2f};"
+                data-target="sec-detail-{prediction["index"]}"
+                title="{html.escape(prediction["label"], quote=True)} | Confidence {html.escape(confidence_text, quote=True)}">
+                <span class="sec-passage-meta">
+                    <span>{html.escape(prediction["label"])}</span>
+                    <span>{confidence_text}</span>
+                </span>
+                <span class="sec-passage-text">{html.escape(prediction["text"])}</span>
+            </button>
+            """
+        )
+
+    source_url = metadata.get("source_url", "#")
+    report_date = metadata.get("reportDate") or "n/a"
+    return f"""
+    <style>
+    {COMPONENT_CSS}
+    </style>
+    <section class="filing-source-card">
+        <div>
+            <div class="source-eyebrow">{html.escape(metadata.get("ticker", ""))} / {html.escape(metadata.get("company", ""))}</div>
+            <h2>{html.escape(metadata.get("form", ""))} Filing</h2>
+            <p>Filed {html.escape(metadata.get("filingDate", ""))} · Report period {html.escape(report_date)}</p>
+        </div>
+        <a href="{html.escape(source_url, quote=True)}" target="_blank" rel="noreferrer">Open SEC source</a>
+    </section>
+    <div class="review-note">Click a highlighted section to view details.</div>
+    <div class="document-review sec-review">
+        <div class="sec-html-view">{''.join(passage_cards)}</div>
+        <aside class="detail-drawer" id="detail-drawer">
+            <div class="detail-empty">Click a highlighted passage to inspect the model prediction.</div>
+            {''.join(detail_cards)}
+        </aside>
+    </div>
+    <script>
+    const root = document.currentScript.parentElement;
+    const drawer = root.querySelector("#detail-drawer");
+    root.querySelectorAll(".sec-passage").forEach((button) => {{
+        button.addEventListener("click", () => {{
+            root.querySelectorAll(".sec-passage.is-selected").forEach((node) => node.classList.remove("is-selected"));
+            root.querySelectorAll(".detail-card").forEach((card) => card.classList.remove("is-visible"));
+            const target = root.querySelector("#" + button.dataset.target);
+            if (target) {{
+                target.classList.add("is-visible");
+                drawer.querySelector(".detail-empty").style.display = "none";
+                button.classList.add("is-selected");
+            }}
+        }});
+    }});
+    </script>
+    """
+
+
 def render_review_component(
     pdf_path: str,
     predictions: list[dict[str, Any]],
@@ -249,7 +491,7 @@ def render_review_component(
     for prediction in predictions:
         if prediction["label"] not in active:
             continue
-        color = LABEL_COLORS.get(prediction["label"], "#64748b")
+        color = label_color(prediction["label"])
         confidence = prediction["confidence"]
         confidence_text = "n/a" if confidence is None else f"{confidence:.0%}"
         detail_cards.append(
@@ -272,7 +514,7 @@ def render_review_component(
         overlays = []
         for item in overlays_by_page.get(page_index, []):
             x0, y0, x1, y1 = item["bbox"]
-            color = LABEL_COLORS.get(item["label"], "#64748b")
+            color = label_color(item["label"])
             confidence = item["confidence"]
             confidence_text = "n/a" if confidence is None else f"{confidence:.0%}"
             left_pct = (x0 * PDF_RENDER_ZOOM / page_image["width"]) * 100
@@ -359,9 +601,9 @@ def render_summary_grid(predictions: list[dict[str, Any]]) -> None:
         header_topic, header_count = st.columns([5, 1])
         header_topic.markdown("<div class='summary-native-header'>Topic</div>", unsafe_allow_html=True)
         header_count.markdown("<div class='summary-native-header count'>Passages</div>", unsafe_allow_html=True)
-        for label in LABELS:
+        for label in model_labels():
             topic_col, count_col = st.columns([5, 1])
-            color = LABEL_COLORS[label]
+            color = label_color(label)
             topic_col.markdown(
                 f"""
                 <div class="summary-native-topic">
@@ -377,16 +619,16 @@ def render_summary_grid(predictions: list[dict[str, Any]]) -> None:
             )
 
 
-def render_topic_filters() -> list[str]:
+def render_topic_filters(prefix: str) -> list[str]:
     """Render checkbox topic filters and return active labels."""
     st.markdown("<div class='filter-title'>Visible topic highlights</div>", unsafe_allow_html=True)
     selected = []
     columns = st.columns(2)
-    for index, label in enumerate(LABELS):
-        filter_key = f"topic_filter_{label}"
+    for index, label in enumerate(model_labels()):
+        filter_key = f"{prefix}_topic_filter_{label}"
         if filter_key not in st.session_state:
             st.session_state[filter_key] = True
-        color = LABEL_COLORS[label]
+        color = label_color(label)
         with columns[index % 2]:
             dot_col, checkbox_col = st.columns([0.12, 0.88])
             dot_col.markdown(
@@ -423,7 +665,7 @@ def render_header() -> None:
                 <div class="brand-copy">
                     <div class="eyebrow">10-K / 10-Q topic intelligence</div>
                     <h1>SECtion Finder</h1>
-                    <p>Upload a filing PDF and review model-tagged investment themes directly on the source document.</p>
+                    <p>Search SEC filings by ticker or upload a PDF to review model-tagged investment themes.</p>
                 </div>
             </div>
         </div>
@@ -442,26 +684,118 @@ def render_loading() -> None:
                 <div class="ticker-dot"></div>
             </div>
             <h3>Analyzing filing</h3>
-            <p>Parsing the PDF, classifying passages, and rendering topic highlights.</p>
+            <p>Extracting filing text, classifying passages, and rendering topic highlights.</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
 
-def main() -> None:
-    st.set_page_config(
-        page_title="SECtion Finder",
-        layout="wide",
-        initial_sidebar_state="collapsed",
+def render_classification_results(
+    predictions: list[dict[str, Any]],
+    messages: list[str],
+    caption: str,
+) -> None:
+    """Render shared model summary and topic filters."""
+    st.markdown("### Classification Summary")
+    st.caption(caption)
+    if messages:
+        for message in messages:
+            st.warning(message)
+    render_summary_grid(predictions)
+
+
+def render_sec_tab() -> None:
+    """Render ticker-driven SEC filing search and classification."""
+    st.markdown("<div class='workflow-title'>Search SEC Filing</div>", unsafe_allow_html=True)
+    search_col, button_col = st.columns([4, 1])
+    with search_col:
+        ticker = st.text_input("Ticker", placeholder="MU", key="sec_ticker").strip().upper()
+    with button_col:
+        st.markdown("<div class='button-spacer'></div>", unsafe_allow_html=True)
+        search = st.button("Find Filings", type="primary", disabled=not ticker, key="find_sec_filings")
+
+    if search:
+        try:
+            st.session_state.sec_filings = cached_recent_filings(ticker)
+            st.session_state.sec_selected_accession = None
+        except Exception as exc:
+            st.error(str(exc))
+            return
+
+    filings = st.session_state.get("sec_filings", [])
+    if not filings:
+        st.markdown(
+            "<div class='empty-state'>Enter a ticker to fetch recent 10-K, 10-Q, and 8-K filings from the SEC.</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    selected_index = st.selectbox(
+        "Select filing",
+        options=list(range(len(filings))),
+        format_func=lambda index: format_filing_option(filings[index]),
+        key="sec_filing_select",
     )
-    inject_styles()
-    render_header()
+    selected_filing = filings[selected_index]
+    analyze = st.button("Analyze SEC Filing", type="primary", key="analyze_sec_filing")
 
+    if analyze:
+        loading_slot = st.empty()
+        with loading_slot:
+            render_loading()
+        try:
+            metadata, predictions, messages = analyze_sec_filing(selected_filing)
+        except Exception as exc:
+            loading_slot.empty()
+            st.error(str(exc))
+            return
+        loading_slot.empty()
+        st.session_state.sec_metadata = metadata
+        st.session_state.sec_predictions = predictions
+        st.session_state.sec_messages = messages
+        st.session_state.sec_selected_accession = selected_filing["accessionNumber"]
+        reset_topic_filters("sec")
+
+    if "sec_predictions" not in st.session_state:
+        return
+
+    metadata = st.session_state.sec_metadata
+    predictions = st.session_state.sec_predictions
+    messages = st.session_state.get("sec_messages", [])
+    report_date = metadata.get("reportDate") or "n/a"
+
+    st.markdown(
+        f"""
+        <div class="metadata-strip">
+            <div><span>Company</span><strong>{html.escape(metadata.get("company", ""))}</strong></div>
+            <div><span>Ticker</span><strong>{html.escape(metadata.get("ticker", ""))}</strong></div>
+            <div><span>Form</span><strong>{html.escape(metadata.get("form", ""))}</strong></div>
+            <div><span>Filed</span><strong>{html.escape(metadata.get("filingDate", ""))}</strong></div>
+            <div><span>Period</span><strong>{html.escape(report_date)}</strong></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.link_button("Open SEC source", metadata["source_url"])
+
+    render_classification_results(
+        predictions,
+        messages,
+        f"{len(predictions)} passages classified from the SEC HTML filing.",
+    )
+    active_labels = render_topic_filters("sec")
+    review_html = render_sec_review_component(metadata, predictions, active_labels)
+    components.html(review_html, height=900, scrolling=True)
+
+
+def render_pdf_tab() -> None:
+    """Render existing upload-first PDF classification workflow."""
+    st.markdown("<div class='workflow-title'>Upload PDF</div>", unsafe_allow_html=True)
     uploaded_file = st.file_uploader("Upload filing PDF", type=["pdf"], label_visibility="visible")
-    analyze = st.button("Analyze Filing", type="primary", disabled=uploaded_file is None)
+    analyze = st.button("Analyze Filing", type="primary", disabled=uploaded_file is None, key="analyze_pdf")
 
-    if uploaded_file is None and "predictions" not in st.session_state:
+    if uploaded_file is None and "pdf_predictions" not in st.session_state:
         st.markdown(
             "<div class='empty-state'>Upload a filing PDF to begin whole-document theme classification.</div>",
             unsafe_allow_html=True,
@@ -480,28 +814,39 @@ def main() -> None:
             return
         loading_slot.empty()
         st.session_state.pdf_path = pdf_path
-        st.session_state.predictions = predictions
-        st.session_state.messages = messages
-        for label in LABELS:
-            st.session_state[f"topic_filter_{label}"] = True
+        st.session_state.pdf_predictions = predictions
+        st.session_state.pdf_messages = messages
+        reset_topic_filters("pdf")
 
-    if "predictions" not in st.session_state:
+    if "pdf_predictions" not in st.session_state:
         return
 
-    predictions = st.session_state.predictions
-    messages = st.session_state.get("messages", [])
-    st.markdown("### Classification Summary")
-    st.caption(f"{len(predictions)} passages classified with the TF-IDF logistic regression model.")
-    if messages:
-        for message in messages:
-            st.warning(message)
-
-    render_summary_grid(predictions)
-
-    active_labels = render_topic_filters()
-
+    predictions = st.session_state.pdf_predictions
+    messages = st.session_state.get("pdf_messages", [])
+    render_classification_results(
+        predictions,
+        messages,
+        f"{len(predictions)} passages classified with the TF-IDF logistic regression model.",
+    )
+    active_labels = render_topic_filters("pdf")
     review_html = render_review_component(st.session_state.pdf_path, predictions, active_labels)
     components.html(review_html, height=900, scrolling=True)
+
+
+def main() -> None:
+    st.set_page_config(
+        page_title="SECtion Finder",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
+    inject_styles()
+    render_header()
+
+    sec_tab, pdf_tab = st.tabs(["Search SEC Filing", "Upload PDF"])
+    with sec_tab:
+        render_sec_tab()
+    with pdf_tab:
+        render_pdf_tab()
 
 
 APP_CSS = """
@@ -583,6 +928,42 @@ header[data-testid="stHeader"] {
     color: #315f92;
     font-size: 0.96rem;
     margin: 0;
+}
+.workflow-title {
+    color: #082b63;
+    font-size: 1.05rem;
+    font-weight: 820;
+    margin: 0.55rem 0 0.7rem;
+}
+.button-spacer {
+    height: 1.78rem;
+}
+.metadata-strip {
+    background: #ffffff;
+    border: 1px solid #dbe8f8;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(8, 43, 99, 0.08);
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    margin: 1rem 0 0.75rem;
+    padding: 0.95rem 1rem;
+}
+.metadata-strip div {
+    min-width: 0;
+}
+.metadata-strip span {
+    color: #315f92;
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 760;
+    text-transform: uppercase;
+}
+.metadata-strip strong {
+    color: #082b63;
+    display: block;
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
 }
 [data-testid="stFileUploader"] {
     background: #ffffff;
@@ -769,6 +1150,9 @@ header[data-testid="stHeader"] {
         align-items: flex-start;
         flex-direction: column;
     }
+    .metadata-strip {
+        grid-template-columns: 1fr 1fr;
+    }
     .brand-logo {
         height: 82px;
         width: 190px;
@@ -798,6 +1182,43 @@ body {
     display: grid;
     gap: 16px;
     grid-template-columns: minmax(0, 1fr) 340px;
+}
+.filing-source-card {
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #dbe8f8;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(8, 43, 99, 0.08);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+}
+.filing-source-card h2 {
+    color: #082b63;
+    font-size: 18px;
+    margin: 2px 0;
+}
+.filing-source-card p {
+    color: #315f92;
+    font-size: 13px;
+    margin: 0;
+}
+.filing-source-card a {
+    background: #0b60e7;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 760;
+    padding: 8px 10px;
+    text-decoration: none;
+}
+.source-eyebrow {
+    color: #19c4b4;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
 }
 .pdf-view {
     display: flex;
@@ -862,6 +1283,51 @@ body {
     position: sticky;
     top: 0;
 }
+.sec-html-view {
+    background: #ffffff;
+    border: 1px solid #dbe8f8;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(8, 43, 99, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 840px;
+    overflow: auto;
+    padding: 12px;
+}
+.sec-passage {
+    background: color-mix(in srgb, var(--topic-color) calc(var(--topic-alpha) * 100%), #ffffff);
+    border: 1px solid color-mix(in srgb, var(--topic-color) 72%, #ffffff);
+    border-left: 5px solid var(--topic-color);
+    border-radius: 8px;
+    color: #082b63;
+    cursor: pointer;
+    display: block;
+    font-family: inherit;
+    padding: 11px 12px;
+    text-align: left;
+    width: 100%;
+}
+.sec-passage:hover,
+.sec-passage.is-selected {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--topic-color) 24%, transparent);
+}
+.sec-passage-meta {
+    align-items: center;
+    color: var(--topic-color);
+    display: flex;
+    font-size: 12px;
+    font-weight: 800;
+    justify-content: space-between;
+    margin-bottom: 7px;
+    text-transform: uppercase;
+}
+.sec-passage-text {
+    display: block;
+    font-size: 14px;
+    line-height: 1.58;
+    white-space: pre-wrap;
+}
 .detail-empty {
     color: #315f92;
     font-size: 14px;
@@ -920,6 +1386,11 @@ body {
 @media (max-width: 980px) {
     .document-review {
         grid-template-columns: 1fr;
+    }
+    .filing-source-card {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
     }
     .detail-drawer {
         max-height: 420px;

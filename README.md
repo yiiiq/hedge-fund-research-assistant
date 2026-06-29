@@ -72,11 +72,16 @@ streamlit run app.py
 
 The app supports:
 
+- Searching SEC filings by ticker
+- Selecting recent 10-K, 10-Q, and 8-K filings
+- Downloading SEC filing HTML and classifying extracted visible text
+- Viewing highlighted SEC passages with confidence and source-link details
 - Uploading `.pdf` SEC filings
-- Whole-document analysis by default
+- Running whole-document PDF analysis by default
 - Viewing original PDF pages with topic-colored highlights
 - Filtering color-coded highlights by investment theme
 
 For Hugging Face Spaces, create a Streamlit Space and include this repository with
-`app.py`, `requirements.txt`, `SECtionFinderLogo.png`, and the model artifact.
-Spaces will install dependencies and launch the Streamlit app automatically.
+`app.py`, `requirements.txt`, `SECtionFinderLogo.png`, `src/`, and the model
+artifact. Spaces will install dependencies and launch the Streamlit app
+automatically.

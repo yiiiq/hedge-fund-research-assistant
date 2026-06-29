@@ -10,7 +10,9 @@ streamlit run app.py
 ```
 
 The app loads `backend/model_artifacts/tfidf_logreg/model.joblib` at startup and
-performs inference only.
+performs inference only. The first tab searches SEC filings by ticker through
+the helpers in `src/labeling/sec_exploration.py`; the second tab keeps the PDF
+upload workflow.
 
 ## Hugging Face Spaces
 
