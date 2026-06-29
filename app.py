@@ -380,45 +380,29 @@ def render_sec_review_component(
     predictions: list[dict[str, Any]],
     active_labels: list[str],
 ) -> str:
-    """Render classified SEC filing text with clickable highlighted passages."""
+    """Render classified SEC filing text with highlighted passages."""
     active = set(active_labels)
     visible_predictions = [prediction for prediction in predictions if prediction["label"] in active]
     if not visible_predictions:
         return "<div class='empty-state'>No SEC passages match the selected topic filters.</div>"
 
-    detail_cards = []
     passage_cards = []
     for prediction in visible_predictions:
         color = label_color(prediction["label"])
         confidence = prediction["confidence"]
         confidence_text = "n/a" if confidence is None else f"{confidence:.0%}"
-        detail_cards.append(
-            f"""
-            <article class="detail-card" id="sec-detail-{prediction["index"]}">
-                <div class="detail-topic" style="background:{color};">{html.escape(prediction["label"])}</div>
-                <dl class="detail-metadata">
-                    <div><dt>Confidence</dt><dd>{confidence_text}</dd></div>
-                    <div><dt>Chunk</dt><dd>{prediction["index"]}</dd></div>
-                </dl>
-                <h3>Extracted passage</h3>
-                <p>{html.escape(prediction["text"])}</p>
-            </article>
-            """
-        )
         passage_cards.append(
             f"""
-            <button
-                type="button"
+            <article
                 class="sec-passage"
                 style="--topic-color:{color}; --topic-alpha:{overlay_opacity(confidence):.2f};"
-                data-target="sec-detail-{prediction["index"]}"
                 title="{html.escape(prediction["label"], quote=True)} | Confidence {html.escape(confidence_text, quote=True)}">
                 <span class="sec-passage-meta">
                     <span>{html.escape(prediction["label"])}</span>
-                    <span>{confidence_text}</span>
+                    <span>Confidence {confidence_text}</span>
                 </span>
                 <span class="sec-passage-text">{html.escape(prediction["text"])}</span>
-            </button>
+            </article>
             """
         )
 
@@ -436,30 +420,10 @@ def render_sec_review_component(
         </div>
         <a href="{html.escape(source_url, quote=True)}" target="_blank" rel="noreferrer">Open SEC source</a>
     </section>
-    <div class="review-note">Click a highlighted section to view details.</div>
-    <div class="document-review sec-review">
+    <div class="review-note">Highlighted passages show the predicted topic and model confidence.</div>
+    <div class="sec-review">
         <div class="sec-html-view">{''.join(passage_cards)}</div>
-        <aside class="detail-drawer" id="detail-drawer">
-            <div class="detail-empty">Click a highlighted passage to inspect the model prediction.</div>
-            {''.join(detail_cards)}
-        </aside>
     </div>
-    <script>
-    const root = document.currentScript.parentElement;
-    const drawer = root.querySelector("#detail-drawer");
-    root.querySelectorAll(".sec-passage").forEach((button) => {{
-        button.addEventListener("click", () => {{
-            root.querySelectorAll(".sec-passage.is-selected").forEach((node) => node.classList.remove("is-selected"));
-            root.querySelectorAll(".detail-card").forEach((card) => card.classList.remove("is-visible"));
-            const target = root.querySelector("#" + button.dataset.target);
-            if (target) {{
-                target.classList.add("is-visible");
-                drawer.querySelector(".detail-empty").style.display = "none";
-                button.classList.add("is-selected");
-            }}
-        }});
-    }});
-    </script>
     """
 
 
@@ -1294,6 +1258,7 @@ body {
     max-height: 840px;
     overflow: auto;
     padding: 12px;
+    width: 100%;
 }
 .sec-passage {
     background: color-mix(in srgb, var(--topic-color) calc(var(--topic-alpha) * 100%), #ffffff);
@@ -1301,16 +1266,11 @@ body {
     border-left: 5px solid var(--topic-color);
     border-radius: 8px;
     color: #082b63;
-    cursor: pointer;
     display: block;
     font-family: inherit;
     padding: 11px 12px;
     text-align: left;
     width: 100%;
-}
-.sec-passage:hover,
-.sec-passage.is-selected {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--topic-color) 24%, transparent);
 }
 .sec-passage-meta {
     align-items: center;
