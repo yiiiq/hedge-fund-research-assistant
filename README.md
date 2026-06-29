@@ -57,3 +57,26 @@ For a quick smoke test before a full run:
 ```
 
 Artifacts are written under `backend/model_artifacts/`.
+
+## Interactive Filing Highlighter
+
+The deployed proof-of-concept app is **SECtion Finder**, a Streamlit interface designed for Hugging Face Spaces.
+It runs inference only with the trained TF-IDF logistic regression artifact at
+`backend/model_artifacts/tfidf_logreg/model.joblib`.
+
+Run locally:
+
+```bash
+streamlit run app.py
+```
+
+The app supports:
+
+- Uploading `.pdf` SEC filings
+- Whole-document analysis by default
+- Viewing original PDF pages with topic-colored highlights
+- Filtering color-coded highlights by investment theme
+
+For Hugging Face Spaces, create a Streamlit Space and include this repository with
+`app.py`, `requirements.txt`, `SECtionFinderLogo.png`, and the model artifact.
+Spaces will install dependencies and launch the Streamlit app automatically.

@@ -7,3 +7,6 @@ joblib
 torch
 transformers
 accelerate
+pymupdf
+pillow
+streamlit
