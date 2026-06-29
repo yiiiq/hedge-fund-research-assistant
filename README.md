@@ -43,6 +43,12 @@ Tune TF-IDF logistic regression hyperparameters:
 .conda/bin/python -m src.models.tune_tfidf_logreg
 ```
 
+Tune with deterministic minority-class oversampling:
+
+```bash
+.conda/bin/python -m src.models.tune_tfidf_logreg --oversample-min-count 150
+```
+
 Fine-tune FinBERT/BERT:
 
 ```bash

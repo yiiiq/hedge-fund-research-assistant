@@ -1,42 +1,30 @@
 {
   "test": {
-    "accuracy": 0.8145695364238411,
-    "macro_f1": 0.814625715206473,
+    "accuracy": 0.8211920529801324,
+    "macro_f1": 0.8084326067447262,
     "per_class": {
-      "AI / Product Strategy": {
-        "f1": 0.8799999999999999,
-        "precision": 0.8461538461538461,
-        "recall": 0.9166666666666666,
-        "support": 36
-      },
       "Capital Allocation / CAPEX": {
         "f1": 0.7966101694915254,
         "precision": 0.8703703703703703,
         "recall": 0.734375,
         "support": 64
       },
-      "Competition": {
-        "f1": 0.8823529411764706,
-        "precision": 0.9375,
-        "recall": 0.8333333333333334,
-        "support": 18
-      },
-      "Demand Growth": {
+      "Demand / Revenue Growth": {
         "f1": 0.8666666666666666,
         "precision": 0.8125,
         "recall": 0.9285714285714286,
         "support": 14
       },
-      "Macro Risk": {
-        "f1": 0.8055555555555555,
-        "precision": 0.8285714285714286,
-        "recall": 0.7837837837837838,
+      "Macro / Cyclical Risk": {
+        "f1": 0.8219178082191781,
+        "precision": 0.8333333333333334,
+        "recall": 0.8108108108108109,
         "support": 37
       },
       "Margins / Profitability": {
-        "f1": 0.6785714285714286,
-        "precision": 0.6551724137931034,
-        "recall": 0.7037037037037037,
+        "f1": 0.6545454545454545,
+        "precision": 0.6428571428571429,
+        "recall": 0.6666666666666666,
         "support": 27
       },
       "Neutral / Other": {
@@ -45,101 +33,89 @@
         "recall": 0.8928571428571429,
         "support": 28
       },
+      "Product / Technology Strategy": {
+        "f1": 0.897196261682243,
+        "precision": 0.9056603773584906,
+        "recall": 0.8888888888888888,
+        "support": 54
+      },
       "Regulation / Legal": {
-        "f1": 0.8496732026143791,
-        "precision": 0.8666666666666667,
-        "recall": 0.8333333333333334,
+        "f1": 0.8645161290322582,
+        "precision": 0.8701298701298701,
+        "recall": 0.8589743589743589,
         "support": 78
       }
     },
-    "weighted_f1": 0.8155375902814382
+    "weighted_f1": 0.8221624098182327
   },
   "train": {
-    "accuracy": 0.9587775408670931,
-    "macro_f1": 0.9579250582301594,
+    "accuracy": 0.9637526652452025,
+    "macro_f1": 0.9604016795909819,
     "per_class": {
-      "AI / Product Strategy": {
-        "f1": 0.964071856287425,
-        "precision": 0.9526627218934911,
-        "recall": 0.9757575757575757,
-        "support": 165
-      },
       "Capital Allocation / CAPEX": {
-        "f1": 0.9569707401032702,
-        "precision": 0.9754385964912281,
-        "recall": 0.9391891891891891,
+        "f1": 0.9624573378839592,
+        "precision": 0.9724137931034482,
+        "recall": 0.9527027027027027,
         "support": 296
       },
-      "Competition": {
-        "f1": 0.9550561797752808,
-        "precision": 0.9139784946236559,
-        "recall": 1.0,
-        "support": 85
-      },
-      "Demand Growth": {
-        "f1": 0.9444444444444444,
-        "precision": 0.8947368421052632,
+      "Demand / Revenue Growth": {
+        "f1": 0.9315068493150686,
+        "precision": 0.8717948717948718,
         "recall": 1.0,
         "support": 68
       },
-      "Macro Risk": {
-        "f1": 0.9597701149425287,
-        "precision": 0.9542857142857143,
+      "Macro / Cyclical Risk": {
+        "f1": 0.9570200573065903,
+        "precision": 0.9488636363636364,
         "recall": 0.9653179190751445,
         "support": 173
       },
       "Margins / Profitability": {
-        "f1": 0.9725490196078431,
-        "precision": 0.9612403100775194,
+        "f1": 0.9763779527559054,
+        "precision": 0.96875,
         "recall": 0.9841269841269841,
         "support": 126
       },
       "Neutral / Other": {
-        "f1": 0.9516728624535317,
-        "precision": 0.9142857142857143,
-        "recall": 0.9922480620155039,
+        "f1": 0.9591078066914498,
+        "precision": 0.9214285714285714,
+        "recall": 1.0,
         "support": 129
       },
+      "Product / Technology Strategy": {
+        "f1": 0.96579476861167,
+        "precision": 0.97165991902834,
+        "recall": 0.96,
+        "support": 250
+      },
       "Regulation / Legal": {
-        "f1": 0.9588652482269503,
-        "precision": 0.9941176470588236,
-        "recall": 0.9260273972602739,
+        "f1": 0.9705469845722299,
+        "precision": 0.9942528735632183,
+        "recall": 0.947945205479452,
         "support": 365
       }
     },
-    "weighted_f1": 0.958827444261622
+    "weighted_f1": 0.9639240784032262
   },
   "validation": {
     "accuracy": 0.8372093023255814,
-    "macro_f1": 0.8154800232999644,
+    "macro_f1": 0.8084565274229251,
     "per_class": {
-      "AI / Product Strategy": {
-        "f1": 0.8493150684931505,
-        "precision": 0.8157894736842105,
-        "recall": 0.8857142857142857,
-        "support": 35
-      },
       "Capital Allocation / CAPEX": {
-        "f1": 0.8225806451612904,
-        "precision": 0.8360655737704918,
+        "f1": 0.8160000000000001,
+        "precision": 0.8225806451612904,
         "recall": 0.8095238095238095,
         "support": 63
       },
-      "Competition": {
-        "f1": 0.8235294117647058,
-        "precision": 0.9333333333333333,
-        "recall": 0.7368421052631579,
-        "support": 19
-      },
-      "Demand Growth": {
-        "f1": 0.6666666666666666,
-        "precision": 0.6111111111111112,
-        "recall": 0.7333333333333333,
+      "Demand / Revenue Growth": {
+        "f1": 0.625,
+        "precision": 0.5882352941176471,
+        "recall": 0.6666666666666666,
         "support": 15
       },
-      "Macro Risk": {
-        "f1": 0.8493150684931507,
-        "precision": 0.8611111111111112,
+      "Macro / Cyclical Risk": {
+        "f1": 0.8378378378378378,
+        "precision": 0.8378378378378378,
         "recall": 0.8378378378378378,
         "support": 37
       },
@@ -155,6 +131,12 @@
         "recall": 0.8148148148148148,
         "support": 27
       },
+      "Product / Technology Strategy": {
+        "f1": 0.8679245283018868,
+        "precision": 0.8846153846153846,
+        "recall": 0.8518518518518519,
+        "support": 54
+      },
       "Regulation / Legal": {
         "f1": 0.9019607843137256,
         "precision": 0.92,
@@ -162,6 +144,6 @@
         "support": 78
       }
     },
-    "weighted_f1": 0.8387243328815874
+    "weighted_f1": 0.8388259944367514
   }
 }

@@ -10,30 +10,33 @@ from src.evaluation.metrics import classification_metrics
 from src.evaluation.reports import write_evaluation_artifacts
 from src.models.data import labels, load_splits, project_root, texts
 from src.models.io import write_json
+from src.models.sampling import oversample_minority_classes
 from src.models.tfidf_logreg import train_tfidf_logreg
 
+
+MIN_DF_PERCENTAGES = [0.001, 0.0025, 0.005, 0.01]
 
 PARAM_GRID = [
     {
         "tfidf__ngram_range": [(1, 1), (1, 2), (1, 3)],
-        "tfidf__min_df": [1, 2, 3],
-        "tfidf__max_df": [0.9, 0.95, 1.0],
+        "tfidf__min_df": MIN_DF_PERCENTAGES,
+        "tfidf__max_df": [0.7, 0.85, 0.95],
         "tfidf__max_features": [None, 10000, 20000],
         "tfidf__sublinear_tf": [True, False],
-        "classifier__C": [0.1, 0.3, 1.0, 3.0],
-        "classifier__class_weight": ["balanced", None],
+        "classifier__C": [0.1, 0.3, 1.0, 3.0, 10.0],
+        "classifier__class_weight": [None, "balanced"],
     }
 ]
 
 QUICK_PARAM_GRID = [
     {
         "tfidf__ngram_range": [(1, 1), (1, 2), (1, 3)],
-        "tfidf__min_df": [1, 2],
-        "tfidf__max_df": [0.95, 1.0],
+        "tfidf__min_df": [0.001, 0.005],
+        "tfidf__max_df": [0.85, 0.95],
         "tfidf__max_features": [None, 10000],
         "tfidf__sublinear_tf": [True],
         "classifier__C": [0.3, 1.0, 3.0],
-        "classifier__class_weight": ["balanced", None],
+        "classifier__class_weight": [None, "balanced"],
     }
 ]
 
@@ -104,6 +107,7 @@ def write_tuning_results(path: Path, results: list[dict]) -> None:
         "tfidf__sublinear_tf",
         "classifier__C",
         "classifier__class_weight",
+        "oversample_min_count",
     ]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -116,6 +120,7 @@ def write_tuning_results(path: Path, results: list[dict]) -> None:
                     "validation_macro_f1": result["validation_macro_f1"],
                     "validation_accuracy": result["validation_accuracy"],
                     "validation_weighted_f1": result["validation_weighted_f1"],
+                    "oversample_min_count": result["oversample_min_count"],
                     **params,
                 }
             )
@@ -125,6 +130,8 @@ def tune(
     grid: list[dict] | None = None,
     output_dir: Path | None = None,
     refit_on_train_validation: bool = True,
+    oversample_min_count: int | None = None,
+    random_state: int = 42,
 ) -> dict:
     try:
         import joblib
@@ -135,10 +142,16 @@ def tune(
         ) from exc
 
     splits = load_splits()
+    selection_train_rows, selection_sampling = oversample_minority_classes(
+        splits["train"],
+        min_count=oversample_min_count,
+        random_state=random_state,
+    )
     candidates = parameter_product(grid or QUICK_PARAM_GRID)
     results = []
     for index, params in enumerate(candidates, start=1):
-        result = score_params(splits["train"], splits["validation"], params)
+        result = score_params(selection_train_rows, splits["validation"], params)
+        result["oversample_min_count"] = oversample_min_count
         results.append(result)
         print(
             f"[{index}/{len(candidates)}] "
@@ -150,7 +163,14 @@ def tune(
     best = results[0]
     best_tfidf_params, best_logreg_params = split_pipeline_params(best["params"])
 
-    final_train_rows = splits["train"] + splits["validation"] if refit_on_train_validation else splits["train"]
+    natural_final_train_rows = (
+        splits["train"] + splits["validation"] if refit_on_train_validation else splits["train"]
+    )
+    final_train_rows, final_sampling = oversample_minority_classes(
+        natural_final_train_rows,
+        min_count=oversample_min_count,
+        random_state=random_state,
+    )
     model = train_tfidf_logreg(
         final_train_rows,
         tfidf_params=best_tfidf_params,
@@ -160,7 +180,7 @@ def tune(
     output_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(model, output_dir / "model.joblib")
     evaluation_splits = (
-        {"train_validation": final_train_rows, "test": splits["test"]}
+        {"train_validation": natural_final_train_rows, "test": splits["test"]}
         if refit_on_train_validation
         else splits
     )
@@ -176,6 +196,10 @@ def tune(
             "selection_metric": "validation_macro_f1",
             "selected_validation_macro_f1": best["validation_macro_f1"],
             "refit_on_train_validation": refit_on_train_validation,
+            "oversample_min_count": oversample_min_count,
+            "random_state": random_state,
+            "selection_train_sampling": selection_sampling,
+            "final_train_sampling": final_sampling,
             "best_params": serializable_params(best["params"]),
         },
     )
@@ -186,6 +210,7 @@ def tune(
         "selected_validation_macro_f1": best["validation_macro_f1"],
         "metrics": metrics,
         "tuning_results_path": str(output_dir / "tuning_results.csv"),
+        "oversample_min_count": oversample_min_count,
     }
 
 
@@ -201,6 +226,21 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Fit the final model on train only after choosing hyperparameters.",
     )
+    parser.add_argument(
+        "--oversample-min-count",
+        type=int,
+        default=None,
+        help=(
+            "Duplicate only training rows so each class has at least this many examples. "
+            "Validation and test rows are never oversampled."
+        ),
+    )
+    parser.add_argument(
+        "--random-state",
+        type=int,
+        default=42,
+        help="Random seed used for reproducible oversampling.",
+    )
     return parser.parse_args()
 
 
@@ -209,6 +249,8 @@ def main() -> None:
     payload = tune(
         grid=PARAM_GRID if args.full_grid else QUICK_PARAM_GRID,
         refit_on_train_validation=not args.no_refit_train_validation,
+        oversample_min_count=args.oversample_min_count,
+        random_state=args.random_state,
     )
     print("Best params:", payload["best_params"])
     print("Tuning results:", payload["tuning_results_path"])
