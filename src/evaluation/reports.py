@@ -16,6 +16,7 @@ from src.models.io import write_json
 
 
 def evaluate_split(rows: list[dict[str, str]], predictions: list[str]) -> dict:
+    """Evaluate predictions for one split using the shared metric suite."""
     return classification_metrics(labels(rows), predictions)
 
 
@@ -25,6 +26,7 @@ def write_split_artifacts(
     rows: list[dict[str, str]],
     predictions: list[str],
 ) -> dict:
+    """Write predictions, metrics, confusion matrix, and errors for one split."""
     output_dir.mkdir(parents=True, exist_ok=True)
     y_true = labels(rows)
     metrics = classification_metrics(y_true, predictions)
@@ -54,6 +56,7 @@ def write_evaluation_artifacts(
     split_rows: dict[str, list[dict[str, str]]],
     split_predictions: dict[str, list[str]],
 ) -> dict:
+    """Write evaluation artifacts for all splits and return their metrics."""
     metrics = {
         split_name: write_split_artifacts(output_dir, split_name, rows, split_predictions[split_name])
         for split_name, rows in split_rows.items()

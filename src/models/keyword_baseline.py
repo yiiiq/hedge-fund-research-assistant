@@ -12,6 +12,7 @@ from src.models.io import write_json
 
 
 def train_keyword_baseline(train_rows: list[dict[str, str]]) -> dict:
+    """Build keyword-baseline configuration from training label priors."""
     label_counts = Counter(labels(train_rows))
     return {
         "model_type": "keyword_baseline",
@@ -22,6 +23,7 @@ def train_keyword_baseline(train_rows: list[dict[str, str]]) -> dict:
 
 
 def keyword_scores(text: str, keyword_map: dict[str, list[str]]) -> dict[str, int]:
+    """Count keyword matches per label for a text chunk."""
     text_l = f" {(text or '').lower()} "
     return {
         label: sum(keyword.lower() in text_l for keyword in keywords)
@@ -30,6 +32,7 @@ def keyword_scores(text: str, keyword_map: dict[str, list[str]]) -> dict[str, in
 
 
 def predict_one(text: str, model: dict) -> str:
+    """Predict one label using keyword counts and label-prior tie breaking."""
     scores = keyword_scores(text, model["keyword_map"])
     best_score = max(scores.values()) if scores else 0
     if best_score == 0:
@@ -41,10 +44,12 @@ def predict_one(text: str, model: dict) -> str:
 
 
 def predict(model: dict, rows: list[dict[str, str]]) -> list[str]:
+    """Predict labels for rows using the keyword baseline."""
     return [predict_one(row["text"], model) for row in rows]
 
 
 def run(output_dir: Path | None = None) -> dict:
+    """Train, evaluate, and write keyword-baseline artifacts."""
     splits = load_splits()
     model = train_keyword_baseline(splits["train"])
     split_predictions = {split: predict(model, rows) for split, rows in splits.items()}
@@ -56,6 +61,7 @@ def run(output_dir: Path | None = None) -> dict:
 
 
 def main() -> None:
+    """Run the keyword baseline from the command line."""
     payload = run()
     print("Default label:", payload["model"]["default_label"])
     print("Validation macro F1:", round(payload["metrics"]["validation"]["macro_f1"], 4))

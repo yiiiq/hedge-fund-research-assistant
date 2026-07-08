@@ -22,6 +22,7 @@ PREDICTION_COLUMNS = [
 
 
 def build_prediction_rows(rows: list[dict[str, str]], predictions: list[str]) -> list[dict[str, str]]:
+    """Join source rows with predicted labels for audit and error analysis."""
     output = []
     for row, pred_label in zip(rows, predictions):
         true_label = row["label"]
@@ -44,6 +45,7 @@ def build_prediction_rows(rows: list[dict[str, str]], predictions: list[str]) ->
 
 
 def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None) -> None:
+    """Write dictionaries to a CSV file, creating parent directories as needed."""
     path.parent.mkdir(parents=True, exist_ok=True)
     if not fieldnames:
         fieldnames = list(rows[0].keys()) if rows else []
@@ -54,4 +56,5 @@ def write_csv(path: Path, rows: list[dict], fieldnames: list[str] | None = None)
 
 
 def write_prediction_csv(path: Path, rows: list[dict[str, str]], predictions: list[str]) -> None:
+    """Write prediction rows using the standard prediction artifact schema."""
     write_csv(path, build_prediction_rows(rows, predictions), PREDICTION_COLUMNS)

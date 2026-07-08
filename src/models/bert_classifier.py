@@ -18,6 +18,8 @@ DEFAULT_MODEL_NAME = "ProsusAI/finbert"
 
 @dataclass
 class BertTrainingConfig:
+    """Configuration for BERT/FinBERT fine-tuning."""
+
     model_name: str = DEFAULT_MODEL_NAME
     max_length: int = 256
     num_train_epochs: float = 3.0
@@ -31,6 +33,8 @@ class BertTrainingConfig:
 
 
 class TextClassificationDataset:
+    """Torch-compatible text classification dataset for labeled filing chunks."""
+
     def __init__(
         self,
         rows: list[dict[str, str]],
@@ -38,15 +42,18 @@ class TextClassificationDataset:
         label_to_id: dict[str, int],
         max_length: int,
     ) -> None:
+        """Store rows, tokenizer, label mapping, and sequence length."""
         self.rows = rows
         self.tokenizer = tokenizer
         self.label_to_id = label_to_id
         self.max_length = max_length
 
     def __len__(self) -> int:
+        """Return the number of examples in the dataset."""
         return len(self.rows)
 
     def __getitem__(self, index: int) -> dict:
+        """Tokenize one row and attach its integer class label."""
         row = self.rows[index]
         encoded = self.tokenizer(
             row["text"],
@@ -61,6 +68,7 @@ class TextClassificationDataset:
 
 
 def require_transformers():
+    """Import optional deep-learning dependencies with a helpful error message."""
     try:
         import numpy as np
         import torch
@@ -89,6 +97,7 @@ def require_transformers():
 
 
 def build_label_maps(split_rows: dict[str, list[dict[str, str]]]) -> tuple[list[str], dict[str, int], dict[int, str]]:
+    """Build deterministic label-to-id and id-to-label mappings across splits."""
     label_names = sorted(
         {
             label
@@ -105,12 +114,14 @@ def maybe_limit_rows(
     splits: dict[str, list[dict[str, str]]],
     limit_rows: int | None,
 ) -> dict[str, list[dict[str, str]]]:
+    """Optionally truncate each split for a quick smoke test."""
     if not limit_rows:
         return splits
     return {split: rows[:limit_rows] for split, rows in splits.items()}
 
 
 def build_training_arguments(training_args_cls, output_dir: Path, config: BertTrainingConfig):
+    """Create Hugging Face TrainingArguments across API naming variants."""
     kwargs = {
         "output_dir": str(output_dir / "trainer"),
         "num_train_epochs": config.num_train_epochs,
@@ -134,6 +145,7 @@ def build_training_arguments(training_args_cls, output_dir: Path, config: BertTr
 
 
 def build_trainer(trainer_cls, tokenizer, **kwargs):
+    """Create a Trainer while supporting tokenizer API changes."""
     trainer_signature = inspect.signature(trainer_cls.__init__)
     if "processing_class" in trainer_signature.parameters:
         return trainer_cls(processing_class=tokenizer, **kwargs)
@@ -144,6 +156,7 @@ def train_bert_classifier(
     config: BertTrainingConfig | None = None,
     output_dir: Path | None = None,
 ) -> dict:
+    """Fine-tune a BERT-style classifier and write evaluation artifacts."""
     config = config or BertTrainingConfig()
     deps = require_transformers()
     np = deps["np"]
@@ -181,6 +194,7 @@ def train_bert_classifier(
     )
 
     def compute_metrics(eval_prediction) -> dict[str, float]:
+        """Compute Trainer-compatible metrics from logits and label IDs."""
         logits, label_ids = eval_prediction
         pred_ids = np.argmax(logits, axis=-1)
         y_true = [id_to_label[int(label_id)] for label_id in label_ids]
@@ -231,6 +245,7 @@ def train_bert_classifier(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line options for BERT/FinBERT training."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-name", default=DEFAULT_MODEL_NAME)
     parser.add_argument("--epochs", type=float, default=3.0)
@@ -248,6 +263,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run BERT/FinBERT fine-tuning from the command line."""
     args = parse_args()
     payload = train_bert_classifier(
         BertTrainingConfig(

@@ -85,3 +85,18 @@ For Hugging Face Spaces, create a Streamlit Space and include this repository wi
 `app.py`, `requirements.txt`, `SECtionFinderLogo.png`, `src/`, and the model
 artifact. Spaces will install dependencies and launch the Streamlit app
 automatically.
+
+## Structure Notes
+
+This repository follows the required project layout with a few intentional naming
+deviations. The deployed user interface is `app.py`, rather than `main.py`,
+because Streamlit and Hugging Face Spaces commonly use `app.py` as the entrypoint.
+Pipeline and helper code is organized under `src/` instead of a separate
+`scripts/` directory, and trained model artifacts are stored under
+`backend/model_artifacts/` instead of a root-level `models/` directory.
+
+## AI Assistance Disclosure
+
+AI assistance was used to draft and standardize code docstrings. The project
+team reviewed and retained responsibility for the resulting code and
+documentation.

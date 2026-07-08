@@ -22,6 +22,7 @@ MODEL_COLUMNS = [
 
 
 def prepare_model_frame(df: pd.DataFrame) -> pd.DataFrame:
+    """Filter manually reviewed rows and normalize the label column for modeling."""
     model_df = df[df["review_status"] == "reviewed"].copy()
     model_df = model_df[model_df["manual_label"].notna()]
     model_df = model_df[model_df["text"].notna()]
@@ -35,6 +36,7 @@ def create_splits(
     validation_fraction_of_temp: float = 0.50,
     random_state: int = 42,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Create stratified train, validation, and test splits."""
     model_df = prepare_model_frame(df)
     train_df, temp_df = train_test_split(
         model_df,
@@ -56,6 +58,7 @@ def write_splits(
     output_dir: Path,
     random_state: int = 42,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Read reviewed labels, write split CSVs, and return split DataFrames."""
     df = pd.read_csv(input_path)
     train_df, validation_df, test_df = create_splits(df, random_state=random_state)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -66,6 +69,7 @@ def write_splits(
 
 
 def main() -> None:
+    """Generate split CSV files from the manually reviewed label dataset."""
     root = Path(__file__).resolve().parents[2]
     train_df, validation_df, test_df = write_splits(
         root / "data" / "labeled" / "manual_review_taxonomy_final.csv",
@@ -78,4 +82,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
