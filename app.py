@@ -672,14 +672,18 @@ def render_classification_results(
 def render_sec_tab() -> None:
     """Render ticker-driven SEC filing search and classification."""
     st.markdown("<div class='workflow-title'>Search SEC Filing</div>", unsafe_allow_html=True)
-    search_col, button_col = st.columns([4, 1])
-    with search_col:
-        ticker = st.text_input("Ticker", placeholder="MU", key="sec_ticker").strip().upper()
-    with button_col:
-        st.markdown("<div class='button-spacer'></div>", unsafe_allow_html=True)
-        search = st.button("Find Filings", type="primary", disabled=not ticker, key="find_sec_filings")
+    with st.form("sec_filing_search_form", clear_on_submit=False):
+        search_col, button_col = st.columns([4, 1])
+        with search_col:
+            ticker = st.text_input("Ticker", placeholder="MU", key="sec_ticker").strip().upper()
+        with button_col:
+            st.markdown("<div class='button-spacer'></div>", unsafe_allow_html=True)
+            search = st.form_submit_button("Find Filings", type="primary")
 
     if search:
+        if not ticker:
+            st.error("Enter a ticker before searching SEC filings.")
+            return
         try:
             st.session_state.sec_filings = cached_recent_filings(ticker)
             st.session_state.sec_selected_accession = None
@@ -806,10 +810,16 @@ def main() -> None:
     inject_styles()
     render_header()
 
-    sec_tab, pdf_tab = st.tabs(["Search SEC Filing", "Upload PDF"])
-    with sec_tab:
+    workflow = st.radio(
+        "Workflow",
+        ["Search SEC Filing", "Upload PDF"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="workflow_mode",
+    )
+    if workflow == "Search SEC Filing":
         render_sec_tab()
-    with pdf_tab:
+    else:
         render_pdf_tab()
 
 
@@ -898,6 +908,23 @@ header[data-testid="stHeader"] {
     font-size: 1.05rem;
     font-weight: 820;
     margin: 0.55rem 0 0.7rem;
+}
+[data-testid="stRadio"] {
+    background: #ffffff;
+    border: 1px solid #dbe8f8;
+    border-radius: 8px;
+    box-shadow: 0 8px 22px rgba(8, 43, 99, 0.07);
+    margin-bottom: 1rem;
+    padding: 0.45rem 0.65rem;
+}
+[data-testid="stRadio"] [role="radiogroup"] {
+    gap: 0.5rem;
+}
+[data-testid="stRadio"] label {
+    background: #f0f7ff;
+    border: 1px solid #dbe8f8;
+    border-radius: 6px;
+    padding: 0.35rem 0.8rem;
 }
 .button-spacer {
     height: 1.78rem;
