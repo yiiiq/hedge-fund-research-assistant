@@ -39,6 +39,7 @@ QUICK_PARAM_GRID = [
 
 
 def parameter_product(grid: list[dict]) -> list[dict]:
+    """Expand a scikit-learn-style parameter grid into candidate dictionaries."""
     try:
         from sklearn.model_selection import ParameterGrid
     except ImportError as exc:
@@ -51,6 +52,7 @@ def parameter_product(grid: list[dict]) -> list[dict]:
 
 
 def split_pipeline_params(params: dict) -> tuple[dict, dict]:
+    """Split prefixed pipeline parameters into vectorizer and classifier params."""
     tfidf_params = {}
     logreg_params = {}
     for key, value in params.items():
@@ -64,6 +66,7 @@ def split_pipeline_params(params: dict) -> tuple[dict, dict]:
 
 
 def serializable_params(params: dict) -> dict:
+    """Convert parameter values into JSON/CSV-friendly types."""
     serializable = {}
     for key, value in params.items():
         if isinstance(value, tuple):
@@ -74,6 +77,7 @@ def serializable_params(params: dict) -> dict:
 
 
 def score_params(train_rows: list[dict[str, str]], validation_rows: list[dict[str, str]], params: dict) -> dict:
+    """Train one candidate and score it on the validation split."""
     tfidf_params, logreg_params = split_pipeline_params(params)
     model = train_tfidf_logreg(
         train_rows,
@@ -91,6 +95,7 @@ def score_params(train_rows: list[dict[str, str]], validation_rows: list[dict[st
 
 
 def write_tuning_results(path: Path, results: list[dict]) -> None:
+    """Write ranked tuning results to CSV."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "rank",
@@ -126,6 +131,7 @@ def tune(
     output_dir: Path | None = None,
     refit_on_train_validation: bool = True,
 ) -> dict:
+    """Run hyperparameter search, refit the best model, and write artifacts."""
     try:
         import joblib
     except ImportError as exc:
@@ -190,6 +196,7 @@ def tune(
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line options for TF-IDF tuning."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--full-grid",
@@ -205,6 +212,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """Run TF-IDF hyperparameter tuning from the command line."""
     args = parse_args()
     payload = tune(
         grid=PARAM_GRID if args.full_grid else QUICK_PARAM_GRID,

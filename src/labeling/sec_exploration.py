@@ -38,10 +38,12 @@ SECTION_RULES = {
 
 
 def project_root() -> Path:
+    """Return the repository root path."""
     return Path(__file__).resolve().parents[2]
 
 
 def load_ticker_cik_map(headers: dict[str, str] | None = None) -> pd.DataFrame:
+    """Download the SEC ticker-to-CIK mapping as a normalized DataFrame."""
     url = "https://www.sec.gov/files/company_tickers.json"
     response = requests.get(url, headers=headers or DEFAULT_HEADERS, timeout=30)
     response.raise_for_status()
@@ -58,6 +60,7 @@ def load_ticker_cik_map(headers: dict[str, str] | None = None) -> pd.DataFrame:
 
 
 def get_submissions(cik: str, headers: dict[str, str] | None = None) -> dict:
+    """Fetch the SEC submissions JSON for a zero-padded company CIK."""
     url = f"https://data.sec.gov/submissions/CIK{cik}.json"
     response = requests.get(url, headers=headers or DEFAULT_HEADERS, timeout=30)
     response.raise_for_status()
@@ -69,6 +72,7 @@ def recent_filings_for_ticker(
     ticker_map: pd.DataFrame,
     headers: dict[str, str] | None = None,
 ) -> pd.DataFrame:
+    """Return recent SEC filings for a ticker using a ticker-to-CIK map."""
     cik = ticker_map.loc[ticker_map["ticker"] == ticker, "cik"].iloc[0]
     submissions = get_submissions(cik, headers=headers)
     recent = pd.DataFrame(submissions["filings"]["recent"])
@@ -82,6 +86,7 @@ def collect_recent_filings(
     target_forms: dict[str, list[str]] | None = None,
     headers: dict[str, str] | None = None,
 ) -> pd.DataFrame:
+    """Collect recent filings for configured tickers and form types."""
     tickers = tickers or DEFAULT_TICKERS
     target_forms = target_forms or TARGET_FORMS
     ticker_map = load_ticker_cik_map(headers=headers)
@@ -99,6 +104,7 @@ def collect_recent_filings(
 
 
 def filing_url(row: pd.Series) -> str:
+    """Build the SEC archive URL for a filing row."""
     cik_int = str(int(row["cik"]))
     accession = row["accessionNumber"].replace("-", "")
     doc = row["primaryDocument"]
@@ -111,6 +117,7 @@ def download_filing(
     headers: dict[str, str] | None = None,
     sleep_seconds: float = 0.2,
 ) -> Path:
+    """Download a filing HTML document and return its local path."""
     raw_dir = raw_dir or project_root() / "data" / "raw"
     out_dir = raw_dir / "sec" / row["ticker"]
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -127,6 +134,7 @@ def download_filing(
 
 
 def html_to_text(path: str | Path) -> str:
+    """Extract visible filing text from a downloaded SEC HTML file."""
     html = Path(path).read_text(encoding="utf-8", errors="ignore")
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style", "table"]):
@@ -138,6 +146,7 @@ def html_to_text(path: str | Path) -> str:
 
 
 def extract_between(text: str, start_patterns: list[str], end_patterns: list[str]) -> str | None:
+    """Extract text between the first matching start and end section patterns."""
     lower = text.lower()
     starts = [match.start() for pattern in start_patterns if (match := re.search(pattern, lower, flags=re.I))]
     if not starts:
@@ -155,6 +164,7 @@ def extract_between(text: str, start_patterns: list[str], end_patterns: list[str
 
 
 def extract_sections(text: str, section_rules: dict | None = None) -> dict[str, str | None]:
+    """Extract named SEC filing sections using regex boundary rules."""
     section_rules = section_rules or SECTION_RULES
     return {
         name: extract_between(text, rules["start"], rules["end"])
@@ -163,6 +173,7 @@ def extract_sections(text: str, section_rules: dict | None = None) -> dict[str, 
 
 
 def chunk_words(text: str | None, chunk_size: int = 220, overlap: int = 40, min_words: int = 80) -> list[str]:
+    """Split text into overlapping word chunks for model training or inference."""
     if not text:
         return []
     words = text.split()
@@ -175,6 +186,7 @@ def chunk_words(text: str | None, chunk_size: int = 220, overlap: int = 40, min_
 
 
 def build_sec_chunks(filings: pd.DataFrame, output_path: Path | None = None) -> pd.DataFrame:
+    """Build a labeled-data-ready chunk table from downloaded filing records."""
     records = []
     for _, row in filings.iterrows():
         text = row.get("text") or html_to_text(row["local_path"])
@@ -196,4 +208,3 @@ def build_sec_chunks(filings: pd.DataFrame, output_path: Path | None = None) -> 
         output_path.parent.mkdir(parents=True, exist_ok=True)
         chunks.to_csv(output_path, index=False)
     return chunks
-

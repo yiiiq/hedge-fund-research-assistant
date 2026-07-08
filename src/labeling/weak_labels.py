@@ -8,6 +8,7 @@ from src.labeling.taxonomy import WEAK_LABEL_KEYWORDS
 
 
 def weak_label(text: str, keyword_map: dict[str, list[str]] | None = None) -> tuple[str, int]:
+    """Assign a weak topic label from keyword matches in a text chunk."""
     keyword_map = keyword_map or WEAK_LABEL_KEYWORDS
     text_l = f" {(text or '').lower()} "
     scores = {
@@ -22,9 +23,9 @@ def weak_label(text: str, keyword_map: dict[str, list[str]] | None = None) -> tu
 
 
 def add_weak_labels(df: pd.DataFrame, text_col: str = "text") -> pd.DataFrame:
+    """Add weak-label and weak-label-score columns to a DataFrame."""
     labeled = df.copy()
     labeled[["weak_label", "weak_label_score"]] = labeled[text_col].apply(
         lambda text: pd.Series(weak_label(text))
     )
     return labeled
-

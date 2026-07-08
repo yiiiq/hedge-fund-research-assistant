@@ -11,6 +11,7 @@ from src.models.io import write_json
 
 
 def train_majority_baseline(train_rows: list[dict[str, str]]) -> dict:
+    """Fit a majority-class baseline from training labels."""
     counts = Counter(labels(train_rows))
     majority_label, majority_count = counts.most_common(1)[0]
     return {
@@ -22,10 +23,12 @@ def train_majority_baseline(train_rows: list[dict[str, str]]) -> dict:
 
 
 def predict(model: dict, rows: list[dict[str, str]]) -> list[str]:
+    """Predict the majority class for every row."""
     return [model["majority_label"]] * len(rows)
 
 
 def run(output_dir: Path | None = None) -> dict:
+    """Train, evaluate, and write majority-baseline artifacts."""
     splits = load_splits()
     model = train_majority_baseline(splits["train"])
     split_predictions = {split: predict(model, rows) for split, rows in splits.items()}
@@ -37,6 +40,7 @@ def run(output_dir: Path | None = None) -> dict:
 
 
 def main() -> None:
+    """Run the majority baseline from the command line."""
     payload = run()
     print("Majority label:", payload["model"]["majority_label"])
     print("Validation macro F1:", round(payload["metrics"]["validation"]["macro_f1"], 4))

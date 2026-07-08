@@ -802,6 +802,7 @@ def render_pdf_tab() -> None:
 
 
 def main() -> None:
+    """Configure and render the SECtion Finder Streamlit application."""
     st.set_page_config(
         page_title="SECtion Finder",
         layout="wide",

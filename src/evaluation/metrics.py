@@ -6,6 +6,7 @@ from collections import Counter
 
 
 def classification_metrics(y_true: list[str], y_pred: list[str]) -> dict:
+    """Compute accuracy, macro F1, weighted F1, and per-class metrics."""
     label_set = sorted(set(y_true) | set(y_pred))
     total = len(y_true)
     accuracy = sum(true == pred for true, pred in zip(y_true, y_pred)) / total if total else 0.0
@@ -49,6 +50,7 @@ def confusion_matrix_counts(
     y_pred: list[str],
     label_order: list[str] | None = None,
 ) -> list[dict[str, int | str]]:
+    """Return confusion-matrix counts as CSV-friendly row dictionaries."""
     label_order = label_order or sorted(set(y_true) | set(y_pred))
     rows = []
     for true_label in label_order:
@@ -63,6 +65,7 @@ def confusion_matrix_counts(
 
 
 def classification_report_rows(metrics: dict) -> list[dict[str, float | int | str]]:
+    """Convert nested metric output into classification-report table rows."""
     rows = []
     for label, values in metrics["per_class"].items():
         rows.append(

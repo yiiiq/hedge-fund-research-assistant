@@ -7,15 +7,18 @@ from pathlib import Path
 
 
 def project_root() -> Path:
+    """Return the repository root path."""
     return Path(__file__).resolve().parents[2]
 
 
 def read_split(path: Path) -> list[dict[str, str]]:
+    """Read one split CSV into a list of row dictionaries."""
     with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
 
 
 def load_splits(data_dir: Path | None = None) -> dict[str, list[dict[str, str]]]:
+    """Load train, validation, and test splits from disk."""
     data_dir = data_dir or project_root() / "data" / "splits"
     return {
         "train": read_split(data_dir / "train.csv"),
@@ -25,9 +28,10 @@ def load_splits(data_dir: Path | None = None) -> dict[str, list[dict[str, str]]]
 
 
 def labels(rows: list[dict[str, str]], label_col: str = "label") -> list[str]:
+    """Extract labels from split rows."""
     return [row[label_col] for row in rows]
 
 
 def texts(rows: list[dict[str, str]], text_col: str = "text") -> list[str]:
+    """Extract model input text from split rows."""
     return [row[text_col] for row in rows]
-

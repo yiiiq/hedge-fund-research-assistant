@@ -31,6 +31,7 @@ def build_tfidf_logreg_pipeline(
     tfidf_params: dict | None = None,
     logreg_params: dict | None = None,
 ):
+    """Build the TF-IDF vectorizer plus logistic regression pipeline."""
     try:
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.linear_model import LogisticRegression
@@ -56,6 +57,7 @@ def train_tfidf_logreg(
     tfidf_params: dict | None = None,
     logreg_params: dict | None = None,
 ):
+    """Fit a TF-IDF logistic regression model on training rows."""
     pipeline = build_tfidf_logreg_pipeline(
         tfidf_params=tfidf_params,
         logreg_params=logreg_params,
@@ -65,6 +67,7 @@ def train_tfidf_logreg(
 
 
 def run(output_dir: Path | None = None) -> dict:
+    """Train, evaluate, and serialize the TF-IDF logistic regression model."""
     try:
         import joblib
     except ImportError as exc:
@@ -87,6 +90,7 @@ def run(output_dir: Path | None = None) -> dict:
 
 
 def main() -> None:
+    """Run TF-IDF logistic regression training from the command line."""
     payload = run()
     print("Model path:", payload["model_path"])
     print("Validation macro F1:", round(payload["metrics"]["validation"]["macro_f1"], 4))

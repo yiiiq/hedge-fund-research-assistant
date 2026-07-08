@@ -21,6 +21,7 @@ ERROR_COLUMNS = [
 
 
 def error_rows(prediction_rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Return only misclassified prediction rows with error-analysis columns."""
     return [
         {
             "chunk_id": row["chunk_id"],
@@ -38,6 +39,7 @@ def error_rows(prediction_rows: list[dict[str, str]]) -> list[dict[str, str]]:
 
 
 def error_summary_rows(prediction_rows: list[dict[str, str]]) -> list[dict[str, int | str]]:
+    """Aggregate misclassifications by true label and predicted label."""
     counts = Counter(
         (row["true_label"], row["pred_label"])
         for row in prediction_rows
@@ -54,6 +56,7 @@ def error_summary_rows(prediction_rows: list[dict[str, str]]) -> list[dict[str, 
 
 
 def write_error_analysis(output_dir: Path, split_name: str, prediction_rows: list[dict[str, str]]) -> None:
+    """Write detailed and summarized error-analysis CSV files for a split."""
     write_csv(
         output_dir / f"{split_name}_errors.csv",
         error_rows(prediction_rows),
